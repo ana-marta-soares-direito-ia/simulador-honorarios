@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="pt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Simulador de Honorários</title>
+<meta name="description" content="Compara avença, valor à hora e êxito para o mesmo trabalho, e mostra quanto recebe em cada modelo. Por Ana Marta Soares, Especialista em IA aplicada ao Direito.">
+<meta name="theme-color" content="#1f5d4c">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icone-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Honorários">
+<style>
+  @font-face{font-family:"Fraunces";src:url("fonts/fraunces-600.woff2") format("woff2");font-weight:600;font-display:swap;}
+  @font-face{font-family:"Inter";src:url("fonts/inter-400.woff2") format("woff2");font-weight:400;font-display:swap;}
+  @font-face{font-family:"Inter";src:url("fonts/inter-500.woff2") format("woff2");font-weight:500;font-display:swap;}
+  @font-face{font-family:"Inter";src:url("fonts/inter-600.woff2") format("woff2");font-weight:600;font-display:swap;}
+
+  /* Layout: controlos à esquerda, resultado comparativo à direita; empilha no telemóvel.
+     Paleta verde-garrafa (dinheiro, sobriedade togada) com um neutro quente. */
+  :root{
+    --bg:#f3f1ec; --surface:#fff; --ink:#1b1a17; --ink-soft:#5a564e; --line:#dcd6ca;
+    --accent:#1f5d4c; --accent-soft:#e6efe9; --accent-ink:#1f5d4c;
+    --amber:#9a6a1a; --amber-soft:#f6eddd;
+    --cliente-bg:#fbfaf7;
+    --fdisplay:"Fraunces",Georgia,serif; --fbody:"Inter",system-ui,sans-serif;
+  }
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+    --bg:#14161a; --surface:#1c1f24; --ink:#eceae4; --ink-soft:#a7a299; --line:#2f343b;
+    --accent:#6cc0a4; --accent-soft:#1c2a26; --accent-ink:#9fd8c3;
+    --amber:#d6a858; --amber-soft:#2c2415; --cliente-bg:#191c20; color-scheme:dark;}}
+  :root[data-theme="dark"]{
+    --bg:#14161a; --surface:#1c1f24; --ink:#eceae4; --ink-soft:#a7a299; --line:#2f343b;
+    --accent:#6cc0a4; --accent-soft:#1c2a26; --accent-ink:#9fd8c3; --amber:#d6a858; --amber-soft:#2c2415; --cliente-bg:#191c20; color-scheme:dark;}
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;}
+  [hidden]{display:none !important;}
+  body{background:var(--bg);color:var(--ink);font-family:var(--fbody);line-height:1.5;}
+  .wrap{max-width:1180px;margin:0 auto;
+    padding-left:max(16px,env(safe-area-inset-left,0px));
+    padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0;}
+
+  header{padding-block:2.2rem 1.4rem;border-bottom:1px solid var(--line);}
+  .brandrow{display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;}
+  .eyebrow{font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:var(--accent-ink);font-weight:600;margin:0 0 .5rem;}
+  h1{font-family:var(--fdisplay);font-weight:600;font-size:clamp(1.8rem,4.5vw,2.7rem);line-height:1.08;letter-spacing:-.01em;text-wrap:balance;margin:0 0 .6rem;}
+  .lede{color:var(--ink-soft);max-width:60ch;font-size:1.02rem;margin:0;}
+  .install{font-family:inherit;font-size:.85rem;font-weight:600;color:var(--accent-ink);background:var(--accent-soft);border:1px solid var(--accent);border-radius:8px;padding:.5rem .9rem;cursor:pointer;white-space:nowrap;}
+
+  /* Alternador de vista */
+  .viewswitch{display:inline-flex;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:.25rem;margin:1.2rem 0 .2rem;gap:.2rem;}
+  .viewswitch button{font-family:inherit;font-size:.88rem;font-weight:600;color:var(--ink-soft);background:none;border:none;border-radius:999px;padding:.45rem 1rem;cursor:pointer;}
+  .viewswitch button[aria-selected="true"]{background:var(--accent);color:#fff;}
+
+  main{display:grid;grid-template-columns:360px 1fr;gap:2rem;padding-block:1.4rem 1rem;align-items:start;}
+  @media (max-width:860px){main{grid-template-columns:1fr;gap:1.4rem;}}
+  .panel{min-width:0;}
+
+  .group{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:1.1rem 1.1rem .4rem;margin-bottom:1.1rem;}
+  .group h2{font-family:var(--fdisplay);font-size:1.02rem;font-weight:600;margin:0 0 .9rem;}
+  .field{margin-bottom:1rem;}
+  .field label{display:block;font-size:.86rem;font-weight:500;margin-bottom:.3rem;}
+  .field .sub{color:var(--ink-soft);font-size:.78rem;font-weight:400;}
+  .inrow{position:relative;}
+  .inrow .unit{position:absolute;right:.7rem;top:50%;transform:translateY(-50%);color:var(--ink-soft);font-size:.85rem;pointer-events:none;}
+  input[type="number"],input[type="text"]{width:100%;font-family:inherit;font-size:.95rem;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:.55rem .7rem;}
+  input:focus{outline:2px solid var(--accent);outline-offset:1px;}
+  .switchline{display:flex;align-items:center;gap:.6rem;padding:.5rem 0;}
+  .switchline input{width:1.05rem;height:1.05rem;accent-color:var(--accent);}
+  .switchline label{font-size:.88rem;margin:0;}
+
+  /* Resultado: três cartões de modelo */
+  .cards{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;}
+  @media (max-width:860px){.cards{grid-template-columns:1fr;}}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:1.1rem;display:flex;flex-direction:column;gap:.55rem;}
+  .card.best{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent);}
+  .card .tag{font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;font-weight:600;color:var(--ink-soft);}
+  .card.best .tag{color:var(--accent-ink);}
+  .card .modelo{font-family:var(--fdisplay);font-size:1.1rem;font-weight:600;margin:0;}
+  .card .total{font-size:1.9rem;font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:-.01em;line-height:1;margin:.2rem 0;}
+  .card .total small{font-size:.8rem;font-weight:500;color:var(--ink-soft);display:block;margin-top:.2rem;}
+  .card .linha{display:flex;justify-content:space-between;font-size:.82rem;color:var(--ink-soft);font-variant-numeric:tabular-nums;border-top:1px dashed var(--line);padding-top:.4rem;}
+  .card .linha.destaque{color:var(--amber);font-weight:600;border-top:1px solid var(--amber);}
+  .card .nota{font-size:.76rem;color:var(--ink-soft);margin-top:.1rem;}
+
+  .insight{background:var(--amber-soft);border:1px solid var(--amber);border-radius:10px;padding:.8rem 1rem;margin-top:1.2rem;font-size:.88rem;color:var(--ink);}
+  .insight b{color:var(--amber);}
+
+  /* Vista cliente */
+  .cliente{background:var(--cliente-bg);border:1px solid var(--line);border-radius:14px;padding:2rem;max-width:720px;}
+  .cliente .topo{border-bottom:2px solid var(--accent);padding-bottom:1rem;margin-bottom:1.2rem;}
+  .cliente .topo .de{font-size:.8rem;color:var(--ink-soft);}
+  .cliente .topo h2{font-family:var(--fdisplay);font-size:1.5rem;font-weight:600;margin:.2rem 0 0;}
+  .cliente .assunto{font-size:.95rem;color:var(--ink-soft);margin-bottom:1.4rem;}
+  .cliente .opcao{border:1px solid var(--line);border-radius:10px;padding:1rem 1.1rem;margin-bottom:.8rem;background:var(--surface);}
+  .cliente .opcao h3{font-size:1rem;margin:0 0 .3rem;}
+  .cliente .opcao .v{font-size:1.4rem;font-weight:600;font-variant-numeric:tabular-nums;color:var(--accent-ink);}
+  .cliente .opcao p{font-size:.84rem;color:var(--ink-soft);margin:.3rem 0 0;}
+  .cliente .rodape{margin-top:1.4rem;padding-top:1rem;border-top:1px solid var(--line);font-size:.8rem;color:var(--ink-soft);}
+  .cliente .seal{font-family:var(--fdisplay);font-style:italic;color:var(--ink);}
+
+  .actions{display:flex;gap:.6rem;flex-wrap:wrap;margin-top:1rem;}
+  .btn{font-family:inherit;font-size:.85rem;font-weight:600;border-radius:8px;padding:.55rem 1rem;cursor:pointer;border:1px solid var(--line);background:var(--surface);color:var(--ink);}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .btn.done{background:var(--accent);border-color:var(--accent);color:#fff;}
+
+  footer{border-top:1px solid var(--line);padding-block:1.4rem 2.4rem;color:var(--ink-soft);font-size:.82rem;text-align:center;margin-top:1.5rem;}
+  footer strong{color:var(--ink);font-weight:600;}
+  .seal{font-family:var(--fdisplay);font-style:italic;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brandrow">
+      <div>
+        <p class="eyebrow">Para advogados</p>
+        <h1>Simulador de Honorários</h1>
+      </div>
+      <button class="install" id="install" hidden>Instalar aplicação</button>
+    </div>
+    <p class="lede">O mesmo trabalho, cobrado de três formas. Veja quanto recebe à hora, em avença e em êxito, descubra quanto vale afinal a sua hora em cada modelo, e mostre ao cliente uma proposta clara.</p>
+    <div class="viewswitch" role="tablist">
+      <button role="tab" id="tab-analise" aria-selected="true">Análise</button>
+      <button role="tab" id="tab-cliente" aria-selected="false">Proposta ao cliente</button>
+    </div>
+  </header>
+
+  <!-- VISTA ANÁLISE -->
+  <main id="vista-analise">
+    <div class="panel">
+      <div class="group">
+        <h2>O trabalho</h2>
+        <div class="field">
+          <label for="assunto">Assunto <span class="sub">(aparece na proposta)</span></label>
+          <input type="text" id="assunto" value="Acção de impugnação de despedimento" maxlength="90">
+        </div>
+        <div class="field">
+          <label for="horas">Horas estimadas de trabalho</label>
+          <div class="inrow"><input type="number" id="horas" value="40" min="0" step="1"><span class="unit">h</span></div>
+        </div>
+      </div>
+
+      <div class="group">
+        <h2>Valor à hora</h2>
+        <div class="field">
+          <label for="vhora">O que cobra por hora</label>
+          <div class="inrow"><input type="number" id="vhora" value="120" min="0" step="5"><span class="unit">€/h</span></div>
+        </div>
+      </div>
+
+      <div class="group">
+        <h2>Avença</h2>
+        <div class="field">
+          <label for="avmensal">Valor mensal</label>
+          <div class="inrow"><input type="number" id="avmensal" value="600" min="0" step="50"><span class="unit">€/mês</span></div>
+        </div>
+        <div class="field">
+          <label for="avmeses">Duração</label>
+          <div class="inrow"><input type="number" id="avmeses" value="4" min="1" step="1"><span class="unit">meses</span></div>
+        </div>
+      </div>
+
+      <div class="group">
+        <h2>Êxito</h2>
+        <div class="field">
+          <label for="exfixo">Parte fixa (adiantamento)</label>
+          <div class="inrow"><input type="number" id="exfixo" value="1000" min="0" step="100"><span class="unit">€</span></div>
+        </div>
+        <div class="field">
+          <label for="exvalor">Valor em causa no processo</label>
+          <div class="inrow"><input type="number" id="exvalor" value="30000" min="0" step="500"><span class="unit">€</span></div>
+        </div>
+        <div class="field">
+          <label for="expct">Percentagem sobre o que ganhar</label>
+          <div class="inrow"><input type="number" id="expct" value="15" min="0" max="100" step="1"><span class="unit">%</span></div>
+        </div>
+      </div>
+
+      <div class="group">
+        <h2>Impostos</h2>
+        <div class="switchline"><input type="checkbox" id="opt-iva" checked><label for="opt-iva">Acrescentar IVA (23%) ao valor a faturar</label></div>
+        <div class="switchline"><input type="checkbox" id="opt-ret"><label for="opt-ret">Descontar retenção na fonte (25%) ao que recebe</label></div>
+        <div class="nota" style="font-size:.76rem;color:var(--ink-soft);padding:.2rem 0 .6rem;">A comparação de "quanto recebe" usa o valor líquido de IVA (o IVA é do Estado, não seu).</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="cards" id="cards"></div>
+      <div class="insight" id="insight"></div>
+      <p class="nota" style="font-size:.78rem;color:var(--ink-soft);margin-top:1rem;">Valores indicativos, para apoio à decisão. O êxito mostra o cenário de ganho total do valor em causa; ajuste conforme o resultado provável. A percentagem de êxito está sujeita aos limites deontológicos aplicáveis (quota litis).</p>
+    </div>
+  </main>
+
+  <!-- VISTA CLIENTE -->
+  <main id="vista-cliente" hidden style="display:block;">
+    <div class="cliente" id="propostaCliente"></div>
+    <div class="actions">
+      <button class="btn primary" id="copiarProposta" type="button">Copiar proposta</button>
+    </div>
+  </main>
+
+  <footer>
+    <p class="seal"><strong>Ana Marta Soares</strong>, Especialista em IA aplicada ao Direito</p>
+    <p>Ferramenta de apoio à decisão. Não dispensa o enquadramento deontológico dos honorários.</p>
+  </footer>
+</div>
+
+<script>
+  function el(id){return document.getElementById(id);}
+  function num(id){var v=parseFloat(el(id).value);return isNaN(v)?0:v;}
+  function eur(v){return v.toLocaleString("pt-PT",{style:"currency",currency:"EUR",maximumFractionDigits:0});}
+  function eur2(v){return v.toLocaleString("pt-PT",{style:"currency",currency:"EUR",minimumFractionDigits:2,maximumFractionDigits:2});}
+
+  var IVA=0.23, RET=0.25;
+
+  function calcular(){
+    var horas=num("horas");
+    var hora=num("vhora")*horas;
+    var avenca=num("avmensal")*num("avmeses");
+    var exito=num("exfixo")+num("exvalor")*(num("expct")/100);
+    return {horas:horas, modelos:[
+      {chave:"hora", nome:"Valor à hora", base:hora, detalhe:num("vhora")+" €/h × "+horas+" h"},
+      {chave:"avenca", nome:"Avença", base:avenca, detalhe:eur(num("avmensal"))+"/mês × "+num("avmeses")+" meses"},
+      {chave:"exito", nome:"Êxito", base:exito, detalhe:eur(num("exfixo"))+" + "+num("expct")+"% de "+eur(num("exvalor"))}
+    ]};
+  }
+
+  function pintarAnalise(){
+    var r=calcular(), iva=el("opt-iva").checked, ret=el("opt-ret").checked;
+    var melhor=Math.max.apply(null, r.modelos.map(function(m){return m.base;}));
+    var cards=el("cards"); cards.innerHTML="";
+    r.modelos.forEach(function(m){
+      var faturar=m.base*(iva?1+IVA:1);
+      var recebe=m.base*(ret?1-RET:1);          // líquido de IVA, menos retenção se activa
+      var porHora=r.horas>0 ? m.base/r.horas : 0;
+      var best=m.base===melhor && melhor>0;
+      var div=document.createElement("div");
+      div.className="card"+(best?" best":"");
+      var linhas="";
+      linhas+='<div class="linha"><span>Honorários</span><span>'+eur(m.base)+'</span></div>';
+      if(iva) linhas+='<div class="linha"><span>A faturar (c/ IVA)</span><span>'+eur(faturar)+'</span></div>';
+      if(ret) linhas+='<div class="linha"><span>Recebe (c/ retenção)</span><span>'+eur(recebe)+'</span></div>';
+      linhas+='<div class="linha destaque"><span>Vale por hora</span><span>'+eur2(porHora)+'/h</span></div>';
+      div.innerHTML=
+        '<div class="tag">'+(best?"Mais recebe":"&nbsp;")+'</div>'+
+        '<p class="modelo">'+m.nome+'</p>'+
+        '<div class="total">'+eur(m.base)+'<small>'+m.detalhe+'</small></div>'+
+        linhas;
+      cards.appendChild(div);
+    });
+    // insight sobre o valor real por hora
+    var ph=r.modelos.map(function(m){return {nome:m.nome, v:r.horas>0?m.base/r.horas:0};});
+    var maxph=ph.reduce(function(a,b){return b.v>a.v?b:a;});
+    var minph=ph.reduce(function(a,b){return b.v<a.v?b:a;});
+    var ins=el("insight");
+    if(r.horas>0 && maxph.v>0){
+      ins.hidden=false;
+      ins.innerHTML="Para as mesmas "+r.horas+" horas, a sua hora vale <b>"+eur2(maxph.v)+"</b> em "+maxph.nome.toLowerCase()+
+        " e apenas <b>"+eur2(minph.v)+"</b> em "+minph.nome.toLowerCase()+
+        ". A diferença é o que costuma passar despercebido quando se escolhe como cobrar.";
+    } else { ins.hidden=true; }
+    pintarCliente();
+  }
+
+  function pintarCliente(){
+    var r=calcular(), iva=el("opt-iva").checked;
+    var assunto=el("assunto").value.trim()||"o seu assunto";
+    var box=el("propostaCliente");
+    function linhaOpcao(m, desc){
+      var v=m.base*(iva?1+IVA:1);
+      return '<div class="opcao"><h3>'+m.nome+'</h3><div class="v">'+eur(v)+(iva?' <span style="font-size:.7rem;color:var(--ink-soft);font-weight:400;">com IVA</span>':'')+'</div><p>'+desc+'</p></div>';
+    }
+    var descr={
+      hora:"Paga o tempo efectivamente dedicado ao seu caso, a "+eur(num("vhora"))+" por hora. Transparente e proporcional ao trabalho realizado.",
+      avenca:"Um valor mensal fixo durante o acompanhamento do caso. Previsível e fácil de orçamentar.",
+      exito:"Um valor inicial reduzido e uma parte dependente do resultado obtido. Alinha os meus honorários com o seu sucesso."
+    };
+    box.innerHTML=
+      '<div class="topo"><div class="de">Proposta de honorários</div><h2>'+assunto+'</h2></div>'+
+      '<p class="assunto">Apresento três formas possíveis de acordar os honorários para este assunto. Escolhemos em conjunto a que melhor lhe convém.</p>'+
+      r.modelos.map(function(m){return linhaOpcao(m, descr[m.chave]);}).join("")+
+      '<div class="rodape"><span class="seal">Ana Marta Soares</span>, Especialista em IA aplicada ao Direito'+
+      (iva?' · Valores com IVA à taxa legal em vigor.':' · Aos valores acresce IVA à taxa legal em vigor.')+'</div>';
+  }
+
+  // Alternador de vista
+  function mostrar(qual){
+    var a=qual==="analise";
+    el("tab-analise").setAttribute("aria-selected", a?"true":"false");
+    el("tab-cliente").setAttribute("aria-selected", a?"false":"true");
+    el("vista-analise").hidden=!a;
+    el("vista-cliente").hidden=a;
+  }
+  el("tab-analise").addEventListener("click", function(){mostrar("analise");});
+  el("tab-cliente").addEventListener("click", function(){pintarCliente();mostrar("cliente");});
+
+  // Copiar proposta como texto
+  el("copiarProposta").addEventListener("click", function(){
+    var r=calcular(), iva=el("opt-iva").checked, btn=this;
+    var assunto=el("assunto").value.trim()||"o assunto";
+    var L=["PROPOSTA DE HONORÁRIOS","Assunto: "+assunto,""];
+    var descr={hora:"paga o tempo dedicado ao caso",avenca:"valor mensal fixo durante o acompanhamento",exito:"valor inicial reduzido mais uma parte dependente do resultado"};
+    r.modelos.forEach(function(m){
+      var v=m.base*(iva?1+IVA:1);
+      L.push(m.nome+": "+eur(v)+(iva?" (com IVA)":"")+" — "+descr[m.chave]+".");
+    });
+    L.push(""); L.push("Ana Marta Soares, Especialista em IA aplicada ao Direito");
+    L.push(iva?"Valores com IVA à taxa legal em vigor.":"Aos valores acresce IVA à taxa legal em vigor.");
+    var texto=L.join("\n");
+    function ok(){btn.textContent="Copiado";btn.classList.add("done");setTimeout(function(){btn.textContent="Copiar proposta";btn.classList.remove("done");},1800);}
+    if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(texto).then(ok).catch(ok);}else{ok();}
+  });
+
+  // Recalcular a cada alteração
+  ["assunto","horas","vhora","avmensal","avmeses","exfixo","exvalor","expct"].forEach(function(id){el(id).addEventListener("input",pintarAnalise);});
+  ["opt-iva","opt-ret"].forEach(function(id){el(id).addEventListener("change",pintarAnalise);});
+
+  pintarAnalise();
+
+  // App
+  var adiado=null;
+  window.addEventListener("beforeinstallprompt",function(e){e.preventDefault();adiado=e;el("install").hidden=false;});
+  el("install").addEventListener("click",function(){if(!adiado)return;adiado.prompt();adiado.userChoice.finally(function(){adiado=null;el("install").hidden=true;});});
+  window.addEventListener("appinstalled",function(){el("install").hidden=true;});
+  if("serviceWorker" in navigator){window.addEventListener("load",function(){navigator.serviceWorker.register("sw.js").catch(function(){});});}
+</script>
+</body>
+</html>
